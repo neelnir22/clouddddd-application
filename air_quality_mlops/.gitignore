@@ -1,0 +1,25 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# MLflow tracking directory
+mlruns/
+*.db
+
+# Models and large datasets
+models/
+dataset/*.csv
+!dataset/.gitkeep
+*.pkl
+*.keras
+*.png
+
+# Virtual Environments
+venv/
+env/
+ENV/
+.env
+
+# MacOS
+.DS_Store
