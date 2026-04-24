@@ -1,12 +1,18 @@
 import streamlit as st
-import requests
 import os
 import pandas as pd
 import datetime
+import joblib
+import numpy as np
 
-API_URL = os.getenv("API_URL", "http://localhost:8000/predict")
+# Suppress tf warnings if keras is used
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATASET_PATH = os.path.join(BASE_DIR, "dataset", "delhi_pm25_aqi.csv")
+MODEL_PKL_PATH = os.path.join(BASE_DIR, "models", "best_model.pkl")
+MODEL_KERAS_PATH = os.path.join(BASE_DIR, "models", "best_model.keras")
+SCALER_PATH = os.path.join(BASE_DIR, "models", "scaler.pkl")
 
 st.set_page_config(page_title="PM2.5 Time-Series Prediction", layout="wide")
 
@@ -100,39 +106,48 @@ else:
 # Prediction Execution Action
 if can_predict:
     if st.button(f"🔮 Forecast PM2.5 for {forecast_time_label}", type="primary"):
-        payload = {
-            "pm25_lag_1": pm25_lag_1,
-            "pm25_lag_2": pm25_lag_2,
-            "pm25_lag_3": pm25_lag_3
-        }
-        
         try:
             with st.spinner("Analyzing temporal patterns..."):
-                response = requests.post(API_URL, json=payload)
+                if not os.path.exists(SCALER_PATH):
+                    st.error("Models not trained. Please run src/train.py first.")
+                    st.stop()
                 
-            if response.status_code == 200:
-                result = response.json()
-                pm25_pred = result['prediction_pm25_next_hour']
-                model_used = result.get('model_used', 'ML Model')
+                scaler = joblib.load(SCALER_PATH)
+                input_data = np.array([[pm25_lag_1, pm25_lag_2, pm25_lag_3]])
+                scaled_data = scaler.transform(input_data)
                 
-                st.success(f"### Predicted PM2.5 For {forecast_time_label}: **{pm25_pred:.2f} µg/m³**")
-                st.markdown(f"*(Powered by **{model_used}**)*")
-                
-                # Indian AQI Scale
-                if pm25_pred <= 30.0:
-                    st.info("🟢 **Good** - Minimal Impact")
-                elif pm25_pred <= 60.0:
-                    st.info("🟡 **Satisfactory** - Minor breathing discomfort to sensitive people")
-                elif pm25_pred <= 90.0:
-                    st.warning("🟠 **Moderately Polluted** - Breathing discomfort to people with lungs, asthma and heart diseases")
-                elif pm25_pred <= 150.0:
-                    st.error("🔴 **Poor** - Breathing discomfort to most people on prolonged exposure")
-                elif pm25_pred <= 250.0:
-                    st.error("🟣 **Very Poor** - Respiratory illness on prolonged exposure")
+                if os.path.exists(MODEL_PKL_PATH):
+                    model = joblib.load(MODEL_PKL_PATH)
+                    prediction = model.predict(scaled_data)
+                    model_used = "SVR (Support Vector Regressor)"
+                elif os.path.exists(MODEL_KERAS_PATH):
+                    from keras.models import load_model
+                    model = load_model(MODEL_KERAS_PATH)
+                    scaled_data_lstm = scaled_data.reshape(scaled_data.shape[0], 1, scaled_data.shape[1])
+                    prediction = model.predict(scaled_data_lstm, verbose=0).flatten()
+                    model_used = "LSTM"
                 else:
-                    st.error("🟫 **SEVERE** - Affects healthy people and seriously impacts those with existing diseases")
+                    st.error("No trained model found.")
+                    st.stop()
+                    
+                pm25_pred = float(prediction[0])
+                
+            st.success(f"### Predicted PM2.5 For {forecast_time_label}: **{pm25_pred:.2f} µg/m³**")
+            st.markdown(f"*(Powered by **{model_used}**)*")
+            
+            # Indian AQI Scale
+            if pm25_pred <= 30.0:
+                st.info("🟢 **Good** - Minimal Impact")
+            elif pm25_pred <= 60.0:
+                st.info("🟡 **Satisfactory** - Minor breathing discomfort to sensitive people")
+            elif pm25_pred <= 90.0:
+                st.warning("🟠 **Moderately Polluted** - Breathing discomfort to people with lungs, asthma and heart diseases")
+            elif pm25_pred <= 150.0:
+                st.error("🔴 **Poor** - Breathing discomfort to most people on prolonged exposure")
+            elif pm25_pred <= 250.0:
+                st.error("🟣 **Very Poor** - Respiratory illness on prolonged exposure")
             else:
-                st.error("Error from Backend API: " + str(response.json()))
+                st.error("🟫 **SEVERE** - Affects healthy people and seriously impacts those with existing diseases")
+                
         except Exception as e:
-            st.error(f"Failed to connect to backend API: {e}")
-            st.markdown("**Note:** Please Ensure the FastAPI Backend is running locally on port 8000.")
+            st.error(f"Prediction failed: {e}")
