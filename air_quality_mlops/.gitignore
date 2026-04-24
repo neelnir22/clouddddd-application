@@ -7,12 +7,11 @@ __pycache__/
 mlruns/
 *.db
 
-# Models and large datasets
-models/
-!dataset/.gitkeep
-*.pkl
-*.keras
+# Large training outputs (plots)
 *.png
+
+# Keep dataset placeholder
+!dataset/.gitkeep
 
 # Virtual Environments
 venv/
