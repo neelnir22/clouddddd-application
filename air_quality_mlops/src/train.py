@@ -27,7 +27,7 @@ def prepare_data():
     df.set_index('datetime', inplace=True)
     
     # Resample to hourly and fill missing (forward fill)
-    df = df['pm25'].resample('H').mean().ffill().reset_index()
+    df = df['pm25'].resample('h').mean().ffill().reset_index()
     
     # Feature Engineering: Create lag features for time-series forecasting (T-1, T-2, T-3)
     df['lag_1'] = df['pm25'].shift(1)

@@ -20,7 +20,7 @@ def load_historical_data():
     df['datetime'] = pd.to_datetime(df['datetime']).dt.tz_localize(None)
     df.set_index('datetime', inplace=True)
     # Ensure continuous hourly data exactly like the training script
-    df = df['pm25'].resample('H').mean().ffill()
+    df = df['pm25'].resample('h').mean().ffill()
     return df
 
 st.title("🏙️ Delhi PM2.5 Hourly Forecast System")
