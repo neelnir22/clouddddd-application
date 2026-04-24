@@ -5,7 +5,8 @@ import pandas as pd
 import datetime
 
 API_URL = os.getenv("API_URL", "http://localhost:8000/predict")
-DATASET_PATH = "dataset/delhi_pm25_aqi.csv"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATASET_PATH = os.path.join(BASE_DIR, "dataset", "delhi_pm25_aqi.csv")
 
 st.set_page_config(page_title="PM2.5 Time-Series Prediction", layout="wide")
 

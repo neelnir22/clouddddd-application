@@ -9,7 +9,6 @@ mlruns/
 
 # Models and large datasets
 models/
-dataset/*.csv
 !dataset/.gitkeep
 *.pkl
 *.keras
